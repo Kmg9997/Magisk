@@ -1,3 +1,4 @@
+# Khalid AI Trader v0.6 production
 FROM python:3.12-slim
 
 RUN apt-get update \
