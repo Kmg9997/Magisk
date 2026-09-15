@@ -1,0 +1,11 @@
+FROM python:3.12-slim
+WORKDIR /app
+COPY app.tgz.b64 /tmp/app.tgz.b64
+RUN base64 -d /tmp/app.tgz.b64 > /tmp/app.tgz \
+ && tar -xzf /tmp/app.tgz -C /app \
+ && echo '=== FILES ===' \
+ && find /app/khalid_v070 -maxdepth 2 -type f -print \
+ && echo '=== PATTERN MATCHES ===' \
+ && grep -R -n -E 'مثلث متماثل|هندسية|تقارب|pattern|triangle|wedge|channel|pivot|touch' /app/khalid_v070 | head -n 300 \
+ && echo '=== END ===' \
+ && false
