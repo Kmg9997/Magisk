@@ -5,11 +5,11 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY app.tgz.b64 /tmp/app.tgz.b64
-RUN base64 -d /tmp/app.tgz.b64 > /tmp/app.tgz \
+COPY app.part*.b64 /tmp/
+RUN cat /tmp/app.part*.b64 | base64 -d > /tmp/app.tgz \
  && tar -xzf /tmp/app.tgz -C /app \
  && test -f /app/khalid_v080/app_cloud.py \
- && rm -f /tmp/app.tgz /tmp/app.tgz.b64
+ && rm -f /tmp/app.tgz /tmp/app.part*.b64
 
 WORKDIR /app/khalid_v080
 RUN pip install --no-cache-dir -r requirements.txt
