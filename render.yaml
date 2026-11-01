@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: khalid-ai-trader
+    runtime: docker
+    plan: free
+    region: frankfurt
+    repo: https://github.com/Kmg9997/Magisk
+    branch: render-deploy
+    rootDir: khalid_ai_trader_v08
+    dockerfilePath: ./khalid_ai_trader_v08/Dockerfile
+    dockerContext: ./khalid_ai_trader_v08
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    numInstances: 1
+    envVars:
+      - key: REFRESH_SECONDS
+        value: "30"
+      - key: RETRAIN_MINUTES
+        value: "360"
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: MKL_NUM_THREADS
+        value: "1"
+      - key: NUMEXPR_NUM_THREADS
+        value: "1"
+      - key: MALLOC_ARENA_MAX
+        value: "2"
