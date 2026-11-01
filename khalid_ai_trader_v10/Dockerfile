@@ -12,7 +12,8 @@ RUN cat /tmp/app.part*.b64 | base64 -d > /tmp/app.tgz \
  && rm -f /tmp/app.tgz /tmp/app.part*.b64
 
 WORKDIR /app/khalid_v100
-RUN pip install --no-cache-dir -r requirements.txt
+RUN sed -i 's/^xgboost.*$/xgboost-cpu==3.4.1/' requirements.txt \
+ && pip install --no-cache-dir -r requirements.txt
 
 ENV PYTHONUNBUFFERED=1 \
     OMP_NUM_THREADS=1 \
@@ -21,5 +22,5 @@ ENV PYTHONUNBUFFERED=1 \
     NUMEXPR_NUM_THREADS=1 \
     MALLOC_ARENA_MAX=2
 
-EXPOSE 8080
-CMD ["sh","-c","exec python -m uvicorn app_cloud:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1"]
+EXPOSE 10000
+CMD ["sh","-c","exec python -m uvicorn app_cloud:app --host 0.0.0.0 --port ${PORT:-10000} --workers 1"]
