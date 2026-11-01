@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: khalid-ai-trader-v1-pro
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: khalid-v1-pro
+    rootDir: khalid_ai_trader_v10
+    dockerfilePath: ./khalid_ai_trader_v10/Dockerfile
+    dockerContext: ./khalid_ai_trader_v10
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    numInstances: 1
+    envVars:
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: MKL_NUM_THREADS
+        value: "1"
+      - key: NUMEXPR_NUM_THREADS
+        value: "1"
+      - key: MALLOC_ARENA_MAX
+        value: "2"
