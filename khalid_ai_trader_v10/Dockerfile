@@ -13,17 +13,6 @@ RUN cat /tmp/app.part*.b64 | base64 -d > /tmp/app.tgz \
 
 WORKDIR /app/khalid_v100
 
-# DIAG_CHART_LABELS
-RUN python - <<'PY'
-from pathlib import Path
-p=Path("static/index.html")
-lines=p.read_text(encoding="utf-8").splitlines()
-for i,line in enumerate(lines):
-    if any(k in line for k in ["createLineSeries","addLineSeries","channel","upper","lower","setData","LineSeries"]):
-        print(f"=== HTML:{i+1} ===")
-        for j in range(max(0,i-2), min(len(lines),i+3)):
-            print(f"{j+1:04d}: {lines[j]}")
-PY
 
 # Stabilize Yahoo single-symbol downloads and normalize duplicated columns safely.
 RUN python - <<'PY'
@@ -91,6 +80,43 @@ PY
 
 # Android/PWA notifications must go through the service worker.
 RUN python -c 'from pathlib import Path; import base64; p=Path("static/index.html"); s=p.read_text(encoding="utf-8"); old=base64.b64decode("IGlmKGxhc3RBY3Rpb24gJiYgbGFzdEFjdGlvbiE9PWQuYWN0aW9uICYmIE5vdGlmaWNhdGlvbj8ucGVybWlzc2lvbj09PSdncmFudGVkJyl7bmV3IE5vdGlmaWNhdGlvbignS2hhbGlkIEFJIFRyYWRlcicse2JvZHk6YNiq2LrZitix2Kog2KfZhNil2LTYp9ix2Kk6ICR7ZC5hY3Rpb259IHwgJHtkLnByaWNlPz8n4oCUJ30g2LEu2LNgLGljb246Jy9pY29uLnN2Zyd9KTt9IGxhc3RBY3Rpb249ZC5hY3Rpb247").decode(); new=base64.b64decode("IGlmKGxhc3RBY3Rpb24gJiYgbGFzdEFjdGlvbiE9PWQuYWN0aW9uICYmICdOb3RpZmljYXRpb24nIGluIHdpbmRvdyAmJiBOb3RpZmljYXRpb24ucGVybWlzc2lvbj09PSdncmFudGVkJyAmJiAnc2VydmljZVdvcmtlcicgaW4gbmF2aWdhdG9yKXtuYXZpZ2F0b3Iuc2VydmljZVdvcmtlci5yZWFkeS50aGVuKHJlZz0+cmVnLnNob3dOb3RpZmljYXRpb24oJ0toYWxpZCBBSSBUcmFkZXInLHtib2R5OmDYqti62YrYsdiqINin2YTYpdi02KfYsdipOiAke2QuYWN0aW9ufSB8ICR7ZC5wcmljZT8/J+KAlCd9INixLtizYCxpY29uOicvaWNvbi5zdmcnLGJhZGdlOicvaWNvbi5zdmcnLHRhZzona2hhbGlkLWFpLXNpZ25hbCcscmVub3RpZnk6dHJ1ZSxkYXRhOnt1cmw6Jy8nfX0pKS5jYXRjaChlcnI9PmNvbnNvbGUud2FybignTm90aWZpY2F0aW9uIGZhaWxlZCcsZXJyKSk7fSBsYXN0QWN0aW9uPWQuYWN0aW9uOw==").decode(); assert old in s or "new Notification" not in s, "unexpected notification code"; s=s.replace(old,new); p.write_text(s,encoding="utf-8"); sw=Path("static/service-worker.js"); t=sw.read_text(encoding="utf-8"); t=t.replace("khalid-ai-v090-shell","khalid-ai-v102-shell").replace("khalid-ai-v100-shell","khalid-ai-v102-shell").replace("khalid-ai-v101-shell","khalid-ai-v102-shell"); click=base64.b64decode("CnNlbGYuYWRkRXZlbnRMaXN0ZW5lcignbm90aWZpY2F0aW9uY2xpY2snLGV2ZW50PT57ZXZlbnQubm90aWZpY2F0aW9uLmNsb3NlKCk7Y29uc3QgdXJsPWV2ZW50Lm5vdGlmaWNhdGlvbj8uZGF0YT8udXJsfHwnLyc7ZXZlbnQud2FpdFVudGlsKGNsaWVudHMubWF0Y2hBbGwoe3R5cGU6J3dpbmRvdycsaW5jbHVkZVVuY29udHJvbGxlZDp0cnVlfSkudGhlbihsaXN0PT57Zm9yKGNvbnN0IGNsaWVudCBvZiBsaXN0KXtpZignZm9jdXMnIGluIGNsaWVudCl7Y2xpZW50Lm5hdmlnYXRlKHVybCk7cmV0dXJuIGNsaWVudC5mb2N1cygpO319cmV0dXJuIGNsaWVudHMub3BlbldpbmRvdz9jbGllbnRzLm9wZW5XaW5kb3codXJsKTp1bmRlZmluZWQ7fSkpO30pOwo=").decode(); sw.write_text(t+(click if "notificationclick" not in t else ""),encoding="utf-8")'
+
+# Dynamic channel labels on the chart: blue = resistance, green = support.
+RUN python - <<'PY'
+from pathlib import Path
+p=Path("static/index.html")
+s=p.read_text(encoding="utf-8")
+old="""    const mkLine=(key,color,width=2,style=LC.LineStyle?.Dashed ?? 2)=>{
+      const ser=chart.addSeries(LC.LineSeries,{color,lineWidth:width,lineStyle:style,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+      const data=sr.filter(x=>x[key]!=null&&isFinite(+x[key])).map(x=>({time:Math.floor(new Date(x.timestamp).getTime()/1000),value:+x[key]}));
+      if(data.length>1)ser.setData(data);
+      return ser;
+    };
+    if(sr.length>1){mkLine('upper','#38bdf8',2);mkLine('middle','#a78bfa',1,LC.LineStyle?.Solid ?? 0);mkLine('lower','#2dd4bf',2);}
+"""
+new="""    const mkLine=(key,color,width=2,style=LC.LineStyle?.Dashed ?? 2,label='')=>{
+      const ser=chart.addSeries(LC.LineSeries,{color,lineWidth:width,lineStyle:style,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+      const data=sr.filter(x=>x[key]!=null&&isFinite(+x[key])).map(x=>({time:Math.floor(new Date(x.timestamp).getTime()/1000),value:+x[key]}));
+      if(data.length>1){
+        ser.setData(data);
+        if(label && typeof ser.createPriceLine==='function'){
+          ser.createPriceLine({price:data[data.length-1].value,color,lineWidth:1,lineStyle:LC.LineStyle?.Dashed ?? 2,lineVisible:false,axisLabelVisible:true,title:label});
+        }
+      }
+      return ser;
+    };
+    if(sr.length>1){mkLine('upper','#38bdf8',2,LC.LineStyle?.Dashed ?? 2,'مقاومة ديناميكية');mkLine('middle','#a78bfa',1,LC.LineStyle?.Solid ?? 0);mkLine('lower','#2dd4bf',2,LC.LineStyle?.Dashed ?? 2,'دعم ديناميكي');}
+"""
+assert old in s, "chart channel block not found"
+s=s.replace(old,new,1)
+p.write_text(s,encoding="utf-8")
+
+sw=Path("static/service-worker.js")
+t=sw.read_text(encoding="utf-8")
+for old_cache in ["khalid-ai-v090-shell","khalid-ai-v100-shell","khalid-ai-v101-shell","khalid-ai-v102-shell"]:
+    t=t.replace(old_cache,"khalid-ai-v103-shell")
+sw.write_text(t,encoding="utf-8")
+PY
 
 RUN sed -i 's/^xgboost.*$/xgboost-cpu==3.4.1/' requirements.txt \
  && pip install --no-cache-dir -r requirements.txt
