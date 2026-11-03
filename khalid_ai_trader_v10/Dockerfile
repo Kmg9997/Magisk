@@ -110,6 +110,9 @@ try:
     c5=a.simple_context(df5); print('STEP c5 OK')
     c30=a.simple_context(df30); print('STEP c30 OK')
     c60=a.simple_context(df60); print('STEP c60 OK')
+    p=a.DATA_DIR/'diag_1820_refresh.csv'; df5.to_csv(p,index=False); print('STEP csv OK')
+    raw=a.load_market_csv(str(p)); print('STEP load_market_csv OK',raw.shape,list(raw.columns))
+    feat,cols=a.add_features(raw); print('STEP features OK',feat.shape,len(cols))
 except Exception as e:
     print('PIPELINE_FAIL',type(e).__name__,repr(e))
     traceback.print_exc()
