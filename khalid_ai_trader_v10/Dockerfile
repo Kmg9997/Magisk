@@ -12,6 +12,15 @@ RUN cat /tmp/app.part*.b64 | base64 -d > /tmp/app.tgz \
  && rm -f /tmp/app.tgz /tmp/app.part*.b64
 
 WORKDIR /app/khalid_v100
+# DIAG_NORMALIZE_YF
+RUN python - <<'PY'
+from pathlib import Path
+lines=Path('app_cloud.py').read_text(encoding='utf-8').splitlines()
+print('=== NORMALIZE_YF_BLOCK ===')
+for j in range(55,98):
+    if j < len(lines): print(f'{j+1:04d}: {lines[j]}')
+PY
+
 # DIAG_MARKET_CONTEXT
 RUN python - <<'PY'
 from pathlib import Path
