@@ -13,6 +13,18 @@ RUN cat /tmp/app.part*.b64 | base64 -d > /tmp/app.tgz \
 
 WORKDIR /app/khalid_v100
 
+# DIAG_CHART_LABELS
+RUN python - <<'PY'
+from pathlib import Path
+p=Path("static/index.html")
+lines=p.read_text(encoding="utf-8").splitlines()
+for i,line in enumerate(lines):
+    if any(k in line for k in ["createLineSeries","addLineSeries","channel","upper","lower","setData","LineSeries"]):
+        print(f"=== HTML:{i+1} ===")
+        for j in range(max(0,i-2), min(len(lines),i+3)):
+            print(f"{j+1:04d}: {lines[j]}")
+PY
+
 # Stabilize Yahoo single-symbol downloads and normalize duplicated columns safely.
 RUN python - <<'PY'
 from pathlib import Path
