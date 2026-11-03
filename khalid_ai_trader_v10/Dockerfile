@@ -12,6 +12,22 @@ RUN cat /tmp/app.part*.b64 | base64 -d > /tmp/app.tgz \
  && rm -f /tmp/app.tgz /tmp/app.part*.b64
 
 WORKDIR /app/khalid_v100
+# DIAG_MARKET_CONTEXT
+RUN python - <<'PY'
+from pathlib import Path
+p=Path('app_cloud.py')
+lines=p.read_text(encoding='utf-8').splitlines()
+print('=== FETCH_BLOCK ===')
+for j in range(97,145):
+    if j < len(lines): print(f'{j+1:04d}: {lines[j]}')
+print('=== MARKET_CONTEXT_HITS ===')
+for i,line in enumerate(lines):
+    if any(k in line for k in ['market_close','sector_close','^TASI','merge(','concat(']):
+        print(f'--- app_cloud.py:{i+1} ---')
+        for j in range(max(0,i-4), min(len(lines),i+5)):
+            print(f'{j+1:04d}: {lines[j]}')
+PY
+
 # DIAG_TO_NUMERIC: print source context during build; does not change runtime behavior.
 RUN python - <<'PY'
 from pathlib import Path
