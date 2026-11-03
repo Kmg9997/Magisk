@@ -80,6 +80,32 @@ for sym in ['1820.SR','^TASI.SR']:
         print('=== YF_RAW_ERROR',sym,repr(e))
 PY
 
+# DIAG_PIPELINE_1820
+RUN python - <<'PY'
+import traceback
+import app_cloud as a
+try:
+    df5=a.fetch('1820.SR','5m','60d'); print('STEP fetch5 OK',df5.shape)
+    df1=a.fetch('1820.SR','1m','7d'); print('STEP fetch1 OK',df1.shape)
+    m=a.fetch(a.MARKET_SYMBOL,'5m','60d'); print('STEP market OK',m.shape)
+    df5=a.attach_market_context(df5,m); print('STEP attach OK',df5.shape, list(df5.columns))
+    df30=a.resample_ohlcv(df5,30); print('STEP r30 OK',df30.shape)
+    df60=a.resample_ohlcv(df5,60); print('STEP r60 OK',df60.shape)
+    lv=a.levels(df5); print('STEP levels OK')
+    ch=a.price_channel(df5,lookback=120); print('STEP ch5 OK')
+    ch30=a.price_channel(df30,lookback=96); print('STEP ch30 OK')
+    ch60=a.price_channel(df60,lookback=80); print('STEP ch60 OK')
+    st=a.structure_consensus(ch,ch30,ch60); print('STEP structure OK')
+    dq=a.assess_data_quality(df5); print('STEP dq OK')
+    c1=a.simple_context(df1); print('STEP c1 OK')
+    c5=a.simple_context(df5); print('STEP c5 OK')
+    c30=a.simple_context(df30); print('STEP c30 OK')
+    c60=a.simple_context(df60); print('STEP c60 OK')
+except Exception as e:
+    print('PIPELINE_FAIL',type(e).__name__,repr(e))
+    traceback.print_exc()
+PY
+
 ENV PYTHONUNBUFFERED=1 \
     OMP_NUM_THREADS=1 \
     OPENBLAS_NUM_THREADS=1 \
