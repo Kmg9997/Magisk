@@ -1,0 +1,89 @@
+name: Khalid Quality Matrix
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/khalid-quality-matrix.yml'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Audit ${{ matrix.code }} ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { code: "1320", name: "Saudi Pipe" }
+          - { code: "2222", name: "Aramco" }
+          - { code: "1120", name: "Al Rajhi" }
+          - { code: "1180", name: "SNB" }
+          - { code: "1010", name: "Riyad Bank" }
+          - { code: "1150", name: "Alinma" }
+          - { code: "2010", name: "SABIC" }
+          - { code: "1211", name: "Maaden" }
+          - { code: "7203", name: "Elm" }
+          - { code: "1820", name: "BAAN" }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: khalid-v1-pro
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconstruct and install
+        run: |
+          mkdir -p /tmp/khalid
+          cat khalid_ai_trader_v10/app.part*.b64 | base64 -d > /tmp/khalid/app.tgz
+          tar -xzf /tmp/khalid/app.tgz -C /tmp/khalid
+          cd /tmp/khalid/khalid_v100
+          sed -i 's/^xgboost.*$/xgboost-cpu==3.4.1/' requirements.txt
+          pip install --disable-pip-version-check -q -r requirements.txt
+      - name: Audit exact quality gate
+        env:
+          CODE: ${{ matrix.code }}
+          LABEL: ${{ matrix.name }}
+        run: |
+          cd /tmp/khalid/khalid_v100
+          python - <<'PY'
+          import os,sys,time,json
+          sys.path.insert(0,'.')
+          import app_cloud as m
+          code=os.environ['CODE']
+          sym=m.normalize_symbol(code)
+          t=time.perf_counter()
+          try:
+              market=m.fetch(m.MARKET_SYMBOL,'5m','60d')
+              df=m.fetch(sym,'5m','60d')
+              df=m.attach_market_context(df,market)
+              m.CURRENT_SYMBOL=sym
+              m.CURRENT_NAME=m.display_name(sym)
+              m.STATE=m.RuntimeState(symbol=sym,name=m.CURRENT_NAME,status='audit')
+              m.BUNDLE=None; m.MODEL_SYMBOL=None; m.FEATURE_COLS=[]; m.MODEL_META={}
+              m.LAST_5M=df; m.LAST_TRAIN_MONO=0.0; m.TRAINING=False
+              m.train_model(sym)
+              x=dict(m.STATE.metrics or {})
+              out={
+                  'code':code,'symbol':sym,'display_name':m.CURRENT_NAME,
+                  'qualified':bool(m.STATE.qualified),
+                  'status':m.STATE.status,'error':m.STATE.error,
+                  'failures':x.get('qualification_failures') or [],
+                  'balanced_accuracy':x.get('balanced_accuracy'),
+                  'balanced_accuracy_ci_low':x.get('balanced_accuracy_ci_low'),
+                  'macro_f1':x.get('macro_f1'),
+                  'up_precision':x.get('up_precision'),
+                  'up_calibration_error':x.get('up_calibration_error'),
+                  'trades':x.get('trades'),
+                  'profit_factor':x.get('profit_factor'),
+                  'avg_trade_pct':x.get('avg_trade_pct'),
+                  'avg_trade_ci_low':x.get('avg_trade_ci_low'),
+                  'positive_chunk_share':x.get('positive_chunk_share'),
+                  'rows':x.get('rows'),
+                  'seconds':round(time.perf_counter()-t,2)
+              }
+          except Exception as e:
+              out={'code':code,'symbol':sym,'qualified':False,'error':repr(e),'seconds':round(time.perf_counter()-t,2)}
+          print('FINAL_AUDIT_RESULT='+json.dumps(out,ensure_ascii=False,sort_keys=True),flush=True)
+          PY
