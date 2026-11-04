@@ -1,0 +1,65 @@
+name: Khalid Quality Probe
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/khalid-quality-probe.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out production branch
+        uses: actions/checkout@v4
+        with:
+          ref: khalid-v1-pro
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconstruct and install
+        run: |
+          mkdir -p /tmp/khalid
+          cat khalid_ai_trader_v10/app.part*.b64 | base64 -d > /tmp/khalid/app.tgz
+          tar -xzf /tmp/khalid/app.tgz -C /tmp/khalid
+          cd /tmp/khalid/khalid_v100
+          sed -i 's/^xgboost.*$/xgboost-cpu==3.4.1/' requirements.txt
+          pip install --disable-pip-version-check -q -r requirements.txt
+      - name: Inspect universe and quality logic
+        run: |
+          cd /tmp/khalid/khalid_v100
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          src=Path('app_cloud.py').read_text(encoding='utf-8')
+          html=Path('static/index.html').read_text(encoding='utf-8')
+          lines=src.splitlines()
+          print('=== SYMBOLS ===')
+          syms=sorted(set(re.findall(r'(?<!\\d)(\\d{4})\\.SR', src+'\\n'+html)))
+          print('count=',len(syms))
+          print(','.join(syms))
+          print('=== SELECT OPTIONS ===')
+          for m in re.finditer(r'<option[^>]*value=["\\\']([^"\\\']+)["\\\'][^>]*>(.*?)</option>',html,re.I|re.S):
+              v=m.group(1).strip(); label=re.sub(r'<.*?>','',m.group(2)).strip()
+              print(v,'|',label)
+          print('=== QUALITY / QUALIFIED CONTEXT ===')
+          seen=set()
+          for i,line in enumerate(lines):
+              ll=line.lower()
+              if ('qualified' in ll or 'quality_fail' in ll or 'profit_factor' in ll or 'balanced_accuracy' in ll) and i not in seen:
+                  a=max(0,i-7); b=min(len(lines),i+14)
+                  for j in range(a,b): seen.add(j)
+                  print(f'--- around line {i+1} ---')
+                  for j in range(a,b): print(f'{j+1:04d}: {lines[j]}')
+          print('=== TRAIN/REFRESH FUNCTIONS ===')
+          for i,line in enumerate(lines):
+              if re.match(r'^def\\s+.*(train|refresh|walk|fit|quality|qualif|pipeline)',line,re.I):
+                  print(f'{i+1:04d}: {line}')
+          print('=== API SELECT ===')
+          for i,line in enumerate(lines):
+              if '/api/select' in line or re.match(r'^def\\s+select',line,re.I):
+                  print(f'--- around line {i+1} ---')
+                  for j in range(max(0,i-8),min(len(lines),i+35)): print(f'{j+1:04d}: {lines[j]}')
+          PY
