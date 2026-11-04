@@ -1,0 +1,31 @@
+name: Khalid Quality Audit
+
+on:
+  push:
+    branches: [ khalid-quality-audit ]
+    paths:
+      - '.github/workflows/khalid-quality-audit.yml'
+      - 'quality_audit_probe.py'
+  workflow_dispatch:
+
+jobs:
+  audit-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconstruct v1.0 Pro source
+        run: |
+          mkdir -p /tmp/khalid
+          cat khalid_ai_trader_v10/app.part*.b64 | base64 -d > /tmp/khalid/app.tgz
+          tar -xzf /tmp/khalid/app.tgz -C /tmp/khalid
+          cd /tmp/khalid/khalid_v100
+          sed -i 's/^xgboost.*$/xgboost-cpu==3.4.1/' requirements.txt
+          pip install --disable-pip-version-check -q -r requirements.txt
+      - name: Probe stock universe and quality gate
+        run: |
+          cd /tmp/khalid/khalid_v100
+          python "$GITHUB_WORKSPACE/quality_audit_probe.py"
