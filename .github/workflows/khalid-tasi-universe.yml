@@ -1,0 +1,72 @@
+name: Khalid TASI Universe Probe
+on:
+  push:
+    branches: [ master ]
+    paths: [ '.github/workflows/khalid-tasi-universe.yml' ]
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: khalid-v1-pro
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reconstruct and install exact app deps
+        run: |
+          mkdir -p /tmp/khalid
+          cat khalid_ai_trader_v10/app.part*.b64 | base64 -d > /tmp/khalid/app.tgz
+          tar -xzf /tmp/khalid/app.tgz -C /tmp/khalid
+          cd /tmp/khalid/khalid_v100
+          sed -i 's/^xgboost.*$/xgboost-cpu==3.4.1/' requirements.txt
+          pip install --disable-pip-version-check -q -r requirements.txt
+      - name: Probe Saudi equity universe
+        run: |
+          cd /tmp/khalid/khalid_v100
+          python - <<'PY'
+          import json,re
+          import yfinance as yf
+          from yfinance import EquityQuery
+          q=EquityQuery('and',[
+              EquityQuery('eq',['region','sa']),
+              EquityQuery('eq',['exchange','SAU']),
+          ])
+          allq=[]
+          for off in (0,250,500):
+              try:
+                  r=yf.screen(q,offset=off,size=250,sortField='ticker',sortAsc=True)
+                  quotes=r.get('quotes',[]) if isinstance(r,dict) else []
+                  print('PAGE',off,'COUNT',len(quotes))
+                  allq.extend(quotes)
+                  if len(quotes)<250: break
+              except Exception as e:
+                  print('PAGE_ERROR',off,repr(e)); break
+          seen={}
+          for x in allq:
+              s=str(x.get('symbol',''))
+              if s: seen[s]=x
+          rows=[]
+          for s,x in seen.items():
+              m=re.fullmatch(r'(\d{4})\.SR',s)
+              if not m: continue
+              code=int(m.group(1))
+              rows.append({
+                  'symbol':s,'code':code,
+                  'name':x.get('shortName') or x.get('longName') or x.get('displayName') or '',
+                  'sector':x.get('sector') or '',
+                  'industry':x.get('industry') or '',
+                  'marketCap':x.get('marketCap') or x.get('intradaymarketcap'),
+              })
+          rows.sort(key=lambda z:z['code'])
+          main_guess=[x for x in rows if x['code']<9000]
+          nomu_guess=[x for x in rows if x['code']>=9000]
+          print('TOTAL_4DIGIT',len(rows))
+          print('LT9000',len(main_guess))
+          print('GE9000',len(nomu_guess))
+          print('FIRST20',json.dumps(rows[:20],ensure_ascii=False))
+          print('LAST40',json.dumps(rows[-40:],ensure_ascii=False))
+          print('SECTORS',json.dumps(sorted(set(x['sector'] for x in main_guess if x['sector'])),ensure_ascii=False))
+          print('MAIN_JSON='+json.dumps(main_guess,ensure_ascii=False,separators=(',',':')))
+          PY
