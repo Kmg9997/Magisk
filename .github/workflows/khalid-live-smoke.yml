@@ -1,0 +1,29 @@
+name: Khalid Live Smoke
+on:
+  push:
+    branches: [ master ]
+    paths: [ '.github/workflows/khalid-live-smoke.yml' ]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check health and TASI universe
+        run: |
+          set -e
+          echo "=== HEALTH ==="
+          curl -fsS --max-time 30 https://khalid-ai-trader-v07-app-production.up.railway.app/health
+          echo
+          echo "=== SYMBOLS ==="
+          curl -fsS --max-time 60 https://khalid-ai-trader-v07-app-production.up.railway.app/api/symbols > /tmp/symbols.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/symbols.json'))
+          items=d.get('items',[])
+          print('count=',d.get('count'))
+          for code in ['4031','1120','2222','7203','1820']:
+              x=next((i for i in items if str(i.get('code'))==code),None)
+              print(code,x)
+          print('sectors=',sorted(set(i.get('sector_ar') for i in items if i.get('sector_ar') and i.get('sector_ar')!='غير مصنف')))
+          print('favorites-ready=',all(k in (open('/tmp/symbols.json').read()) for k in ['4031','1120']))
+          PY
