@@ -92,7 +92,7 @@ s = s.replace("dq = assess_data_quality(df5)", "dq = assess_data_quality(df5, sy
 
 # Arabic directory for TASI.
 ustart = s.index("def load_tasi_universe(force: bool = False)")
-uend = s.index('\n@app.get("/api/symbols")', ustart)
+uend = s.index("\ndef normalize_symbol", ustart)
 universe = '''def _arabic_tasi_directory() -> list[dict[str, Any]]:
     import re
     import requests
