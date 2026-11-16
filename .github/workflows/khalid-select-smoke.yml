@@ -1,0 +1,29 @@
+name: Khalid Select Smoke
+on:
+  push:
+    branches: [ master ]
+    paths: [ '.github/workflows/khalid-select-smoke.yml' ]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify numeric Saudi ticker selection
+        run: |
+          set -e
+          BASE=https://khalid-ai-trader-v07-app-production.up.railway.app
+          curl -fsS --max-time 30 "$BASE/" > /tmp/home.html
+          python - <<'PY'
+          h=open('/tmp/home.html',encoding='utf-8').read()
+          assert "/^(\\d{4}|TTWO)$/i" in h, "correct numeric regex missing"
+          assert "/^(\\\\d{4}|TTWO)$/i" not in h, "broken escaped regex still present"
+          print("REGEX_OK")
+          PY
+          curl -fsS --max-time 30 -X POST "$BASE/api/select"             -H 'Content-Type: application/json'             --data '{"symbol":"1831"}' > /tmp/select.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/select.json',encoding='utf-8'))
+          print(d)
+          assert str(d.get('symbol','')).startswith('1831'), d
+          print("SELECT_1831_OK")
+          PY
