@@ -112,7 +112,7 @@ h=h.replace(old_lines,new_lines,1)
 
 # Make the scenario explicitly research/technical.
 scenario_tail=":'بيانات غير كافية'; $('channelState').textContent="
-scenario_new=":'بيانات غير كافية'; if(ch.available&&ch.plan_valid===false){$('chartScenario').textContent+=' · ⚠️ مستويات الخطة غير صالحة بعد تقريبها لسعر التنفيذ';} else if(ch.available){$('chartScenario').textContent+=' · المستويات فنية استرشادية وليست توصية';} $('channelState').textContent="
+scenario_new=":'بيانات غير كافية'; if(ch.available&&ch.plan_valid===false){$('chartScenario').textContent+=' · ⚠️ مستويات الخطة غير صالحة بعد تقريبها لسعر التنفيذ';} else if(ch.available&&ch.reward_risk_to_t1!=null&&Number(ch.reward_risk_to_t1)<1){$('chartScenario').textContent+=' · ⚠️ عائد/مخاطرة T1 ضعيف ('+Number(ch.reward_risk_to_t1).toFixed(2)+'×) · مستويات فنية وليست توصية';} else if(ch.available){$('chartScenario').textContent+=' · المستويات فنية استرشادية وليست توصية';} $('channelState').textContent="
 assert scenario_tail in h, "scenario insertion point missing"
 h=h.replace(scenario_tail,scenario_new,1)
 
@@ -121,6 +121,6 @@ p.write_text(h,encoding="utf-8")
 # PWA cache bump.
 sw=Path("static/service-worker.js")
 t=sw.read_text(encoding="utf-8")
-for old in ["khalid-ai-v105-shell","khalid-ai-v104-shell","khalid-ai-v103-shell"]:
-    t=t.replace(old,"khalid-ai-v106-shell")
+for old in ["khalid-ai-v106-shell","khalid-ai-v105-shell","khalid-ai-v104-shell","khalid-ai-v103-shell"]:
+    t=t.replace(old,"khalid-ai-v107-shell")
 sw.write_text(t,encoding="utf-8")
