@@ -104,7 +104,10 @@ universe = '''def _arabic_tasi_directory() -> list[dict[str, Any]]:
         headers={"User-Agent":"Mozilla/5.0 KhalidAITrader/1.0"},
     )
     response.raise_for_status()
-    soup = BeautifulSoup(response.text, "html.parser")
+    # The directory page is UTF-8 but may advertise a legacy/default HTTP charset.
+    # Decode bytes explicitly to prevent Arabic mojibake such as "Ø§Ù...".
+    html_text = response.content.decode("utf-8", errors="strict")
+    soup = BeautifulSoup(html_text, "html.parser")
     items: list[dict[str, Any]] = []
     seen: set[str] = set()
     for tr in soup.find_all("tr"):
