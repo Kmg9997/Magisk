@@ -429,6 +429,8 @@ PY
 # Arabic TASI directory + TTWO US-market support.
 COPY patch_arabic_tt.py /tmp/patch_arabic_tt.py
 RUN python /tmp/patch_arabic_tt.py && rm -f /tmp/patch_arabic_tt.py
+COPY patch_targets.py /tmp/patch_targets.py
+RUN python /tmp/patch_targets.py && rm -f /tmp/patch_targets.py
 
 RUN sed -i 's/^xgboost.*$/xgboost-cpu==3.4.1/' requirements.txt \
  && pip install --no-cache-dir -r requirements.txt
