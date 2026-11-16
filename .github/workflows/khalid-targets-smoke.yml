@@ -1,0 +1,49 @@
+name: Khalid Targets Smoke
+on:
+  push:
+    branches: [ master ]
+    paths: [ '.github/workflows/khalid-targets-smoke.yml' ]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify executable T1 T2 STOP on low-price stock
+        run: |
+          set -e
+          BASE=https://khalid-ai-trader-v07-app-production.up.railway.app
+          curl -fsS --max-time 30 -X POST "$BASE/api/select"             -H 'Content-Type: application/json'             --data '{"symbol":"1831"}' >/tmp/select.json
+          sleep 25
+          curl -fsS --max-time 30 "$BASE/api/status" >/tmp/status.json
+          curl -fsS --max-time 30 "$BASE/" >/tmp/home.html
+          python - <<'PY'
+          import json,math
+          d=json.load(open('/tmp/status.json',encoding='utf-8'))
+          ch=d.get('channel') or {}
+          print('SYMBOL',d.get('symbol'),'PRICE',d.get('price'))
+          print('PLAN',json.dumps({
+            't1':ch.get('research_target_1'),
+            't2':ch.get('research_target_2'),
+            'stop':ch.get('research_stop'),
+            't1_pct':ch.get('target1_pct'),
+            't2_pct':ch.get('target2_pct'),
+            'stop_pct':ch.get('stop_pct'),
+            'rr':ch.get('reward_risk_to_t1'),
+            'plan_valid':ch.get('plan_valid'),
+            'tick_size':ch.get('tick_size')
+          },ensure_ascii=False))
+          assert ch.get('tick_size')==0.01, ch
+          for k in ['research_target_1','research_target_2','research_stop']:
+              v=ch.get(k)
+              if v is not None:
+                  assert abs(round(v/0.01)-v/0.01)<1e-7,(k,v)
+          price=d.get('price')
+          stop=ch.get('research_stop')
+          if ch.get('plan_valid') and price is not None and stop is not None:
+              assert stop < price,(price,stop)
+          h=open('/tmp/home.html',encoding='utf-8').read()
+          for token in ['T1 فني','T2 فني','إبطال فني','المستويات فنية استرشادية وليست توصية']:
+              print('TOKEN',token,token in h)
+              assert token in h,token
+          print('TARGETS_SMOKE_OK')
+          PY
