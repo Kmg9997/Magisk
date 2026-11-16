@@ -8,22 +8,37 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     steps:
-      - name: Check health and TASI universe
+      - name: Verify Arabic selector and TTWO live
         run: |
           set -e
+          BASE=https://khalid-ai-trader-v07-app-production.up.railway.app
           echo "=== HEALTH ==="
-          curl -fsS --max-time 30 https://khalid-ai-trader-v07-app-production.up.railway.app/health
+          curl -fsS --max-time 30 "$BASE/health"
           echo
           echo "=== SYMBOLS ==="
-          curl -fsS --max-time 60 https://khalid-ai-trader-v07-app-production.up.railway.app/api/symbols > /tmp/symbols.json
+          curl -fsS --max-time 60 "$BASE/api/symbols" > /tmp/symbols.json
+          echo "=== HOME ==="
+          curl -fsS --max-time 30 "$BASE/" > /tmp/home.html
           python - <<'PY'
-          import json
-          d=json.load(open('/tmp/symbols.json'))
+          import json,re
+          d=json.load(open('/tmp/symbols.json',encoding='utf-8'))
           items=d.get('items',[])
-          print('count=',d.get('count'))
-          for code in ['4031','1120','2222','7203','1820']:
-              x=next((i for i in items if str(i.get('code'))==code),None)
-              print(code,x)
-          print('sectors=',sorted(set(i.get('sector_ar') for i in items if i.get('sector_ar') and i.get('sector_ar')!='غير مصنف')))
-          print('favorites-ready=',all(k in (open('/tmp/symbols.json').read()) for k in ['4031','1120']))
+          print('market=',d.get('market'),'count=',d.get('count'))
+          for code in ['4031','1120','2222','7203','1820','1320','TTWO']:
+              x=next((i for i in items if str(i.get('code')).upper()==code),None)
+              print('ITEM',code,x)
+          arabic=sum(1 for x in items if x.get('market')!='NASDAQ' and re.search(r'[\u0600-\u06FF]',str(x.get('name',''))))
+          tasi=sum(1 for x in items if x.get('market')!='NASDAQ')
+          print('TASI_COUNT',tasi,'ARABIC_NAME_COUNT',arabic)
+          tt=next((x for x in items if str(x.get('code')).upper()=='TTWO'),None)
+          assert tt and tt.get('market')=='NASDAQ', tt
+          assert 'تيك-تو' in str(tt.get('name')), tt
+          gs=next((x for x in items if str(x.get('code'))=='4031'),None)
+          assert gs and re.search(r'[\u0600-\u06FF]',str(gs.get('name',''))), gs
+          assert arabic >= max(220, int(tasi*0.9)), (arabic,tasi)
+          html=open('/tmp/home.html',encoding='utf-8').read()
+          for token in ['السوق السعودي — تاسي','السوق الأمريكي — ناسداك','TTWO','currencyLabel','الخدمات الأرضية']:
+              print('HOME_TOKEN',token,token in html)
+              assert token in html, token
+          print('SMOKE_OK')
           PY
