@@ -242,7 +242,7 @@ function updateFavButton(){
 }
 function toggleFavorite(){
   const code=currentCode();
-  if(!/^(\\d{4}|TTWO)$/i.test(code))return;
+  if(!/^(\d{4}|TTWO)$/i.test(code))return;
   let fav=favoriteCodes();
   fav=fav.includes(code)?fav.filter(x=>x!==code):[...fav,code];
   saveFavoriteCodes(fav); updateFavButton(); renderSymbolOptions();
@@ -313,7 +313,7 @@ sstart = h.index("async function selectSymbol(){")
 send = h.index("\nasync function retrain()", sstart)
 select_fn = r'''async function selectSymbol(){
   const code=$('symbolInput').value.trim().toUpperCase(), b=$('selectBtn');
-  if(!/^(\\d{4}|TTWO)$/i.test(code)){
+  if(!/^(\d{4}|TTWO)$/i.test(code)){
     $('error').textContent='اختر سهمًا من القائمة أو اكتب رمزًا سعوديًا من 4 أرقام أو TTWO';
     return;
   }
